@@ -5,6 +5,7 @@ import * as argon2 from 'argon2';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Tokens } from './dto/token.dto';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -24,27 +25,38 @@ export class AuthService {
 
   async login(admin: any): Promise<Tokens> {
     const payload = { login: admin.login, sub: admin.id };
+    const secret = this.configService.get<string>('JWT_SECRET');
+    if (!secret) {
+      throw new Error('JWT_SECRET is not defined');
+    }
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.jwtService.sign(payload, { secret }),
       refresh_token: this.generateRefreshToken(admin.id),
     };
   }
 
   generateRefreshToken(id: number): string {
-    return this.jwtService.sign({ id }, { secret: this.configService.get<string>('JWT_REFRESH_SECRET'), expiresIn: '7d' });
+    const secret = this.configService.get<string>('JWT_REFRESH_SECRET');
+    if (!secret) {
+      throw new Error('JWT_REFRESH_SECRET is not defined');
+    }
+    return this.jwtService.sign({ id }, { secret, expiresIn: '7d' });
   }
 
   async refreshTokens(refreshToken: string): Promise<Tokens> {
     try {
-      const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      });
+      const secret = this.configService.get<string>('JWT_REFRESH_SECRET');
+      if (!secret) {
+        throw new Error('JWT_REFRESH_SECRET is not defined');
+      }
+      const payload = this.jwtService.verify(refreshToken, { secret });
       const admin = await this.adminService.findAdminByLogin(payload.login);
       if (!admin) {
         throw new Error('Admin not found');
       }
       return this.login(admin);
-    } catch {
+    } catch (error) {
+      console.error('Error refreshing tokens:', error);
       throw new Error('Invalid refresh token');
     }
   }
