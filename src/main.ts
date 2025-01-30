@@ -1,12 +1,20 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import * as dotenv from "dotenv"
-
-dotenv.config();
+import { AdminSeed } from './admin/admin.seed';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix("api")
-  await app.listen(process.env.PORT ?? 3000);
+
+  app.setGlobalPrefix('api');
+
+  const configService: ConfigService = app.get(ConfigService);
+
+  await app.listen(configService.get<number>('PORT') || 3000);
+
+  const adminSeed: AdminSeed = app.get(AdminSeed);
+  await adminSeed.seed();
 }
+
+// Запуск приложения
 bootstrap();

@@ -1,0 +1,20 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Admin {
+  id: Float!
+  login: String!
+  password: String!
+  accessToken: String
+  refreshToken: String
+}
+
+type Query {
+  admins: [Admin!]!
+  admin(id: Float!): Admin
+}
+
+type Mutation {
+  changeAdminPassword(id: Float!, newPassword: String!): Admin!
+}

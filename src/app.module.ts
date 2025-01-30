@@ -1,6 +1,11 @@
 import { Module } from '@nestjs/common';
+import { GraphQLModule } from '@nestjs/graphql';
+import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { join } from 'path';
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -12,7 +17,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       useFactory: (configService: ConfigService): TypeOrmModuleOptions => ({
         type: configService.get<string>('TYPEORM_TYPE', 'postgres') as 'postgres',
         host: configService.get<string>('TYPEORM_HOST', 'localhost'),
-        port: +configService.get<number>('TYPEORM_PORT', 5432), 
+        port: +configService.get<number>('TYPEORM_PORT', 5432),
         username: configService.get<string>('TYPEORM_USERNAME'),
         password: configService.get<string>('TYPEORM_PASSWORD'),
         database: configService.get<string>('TYPEORM_DATABASE'),
@@ -20,6 +25,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         synchronize: configService.get<boolean>('TYPEORM_SYNCHRONIZE', false),
       }),
     }),
+    GraphQLModule.forRoot<ApolloDriverConfig>({
+      driver: ApolloDriver,
+      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      playground:true
+    }),
+    AdminModule,
+
   ],
   controllers: [],
   providers: [],
