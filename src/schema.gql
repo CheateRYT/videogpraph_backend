@@ -10,11 +10,23 @@ type Admin {
   refreshToken: String
 }
 
+type Tokens {
+  access_token: String!
+  refresh_token: String!
+}
+
 type Query {
   admins: [Admin!]!
-  admin(id: Float!): Admin
+  admin(id: Int!): Admin
 }
 
 type Mutation {
-  changeAdminPassword(id: Float!, newPassword: String!): Admin!
+  changeAdminPassword(id: Int!, newPassword: String!): Admin!
+  login(loginInput: AdminLoginDto!): Tokens!
+  refreshTokens: Tokens!
+}
+
+input AdminLoginDto {
+  login: String!
+  password: String!
 }
