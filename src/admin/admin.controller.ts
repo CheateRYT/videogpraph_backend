@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { UserLoginDto } from 'src/auth/dto/user-login.dto';
 import { AdminGuard } from 'src/admin.guard';
@@ -22,5 +30,17 @@ export class AdminController {
   @Get('users')
   async getUsers() {
     return this.adminService.getUsers();
+  }
+  @Delete('users/:id') // Удаление пользователя по ID
+  async deleteUser(@Param('id') id: number) {
+    return this.adminService.deleteUserById(id);
+  }
+
+  @Delete('users/:userId/videos/:videoId') // Удаление видео по ID пользователя и ID видео
+  async deleteVideo(
+    @Param('userId') userId: number,
+    @Param('videoId') videoId: number,
+  ) {
+    return this.adminService.deleteVideo(userId, videoId);
   }
 }

@@ -14,7 +14,7 @@ export class AdminService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Admin)
     private readonly adminRepository: Repository<Admin>,
-    @InjectRepository(Video) // Добавьте репозиторий для Video
+    @InjectRepository(Video)
     private readonly videoRepository: Repository<Video>,
   ) {}
 
@@ -27,35 +27,61 @@ export class AdminService {
   }
 
   async registerUser(dto: UserLoginDto): Promise<User> {
-    const { login, password } = dto;
     const existingUser = await this.userRepository.findOne({
-      where: { login },
+      where: { login: dto.login },
     });
+
     if (existingUser) {
       throw new NotFoundException('Пользователь уже существует');
     }
-    const user = new User();
-    user.login = login;
-    user.password = password; // Сохраняем пароль в открытом виде (не рекомендуется для продакшн)
+
+    const user = this.userRepository.create({
+      login: dto.login,
+      password: dto.password, // Сохраняем пароль в открытом виде (не рекомендуется для продакшн)
+    });
+
     return this.userRepository.save(user);
   }
 
   async addVideoToUser(createVideoDto: CreateVideoDto): Promise<Video> {
-    const { link, userId } = createVideoDto;
+    const user = await this.getUserById(createVideoDto.userId);
 
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('Пользователь не найден');
-    }
-
-    const video = new Video();
-    video.link = link;
-    video.user = user; // Связываем видео с пользователем
+    const video = this.videoRepository.create({
+      link: createVideoDto.link,
+      user: user,
+    });
 
     return this.videoRepository.save(video);
   }
 
   async getUsers(): Promise<User[]> {
     return this.userRepository.find({ relations: ['videos'] }); // Получаем пользователей с видео
+  }
+
+  async deleteUserById(id: number): Promise<void> {
+    const user = await this.getUserById(id);
+    await this.userRepository.remove(user);
+  }
+
+  async deleteVideo(userId: number, videoId: number): Promise<void> {
+    const user = await this.getUserById(userId);
+
+    const video = await this.videoRepository.findOne({
+      where: { id: videoId, user },
+    });
+
+    if (!video) {
+      throw new NotFoundException('Видео не найдено');
+    }
+
+    await this.videoRepository.remove(video);
+  }
+
+  private async getUserById(id: number): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+    return user;
   }
 }
