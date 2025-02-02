@@ -1,36 +1,43 @@
 import { Injectable } from '@nestjs/common';
-import { AdminService } from './admin.service';
-import * as argon2 from 'argon2';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { Admin } from './admin.entity';
+import * as argon2 from 'argon2'; // Импортируем argon2
+import { Admin } from 'src/admin/admin.entity';
 
 @Injectable()
 export class AdminSeed {
   constructor(
-    private readonly adminService: AdminService,
+    @InjectRepository(Admin)
+    private readonly adminRepository: Repository<Admin>,
     private readonly configService: ConfigService,
   ) {}
 
-  async seed() {
-    const login = this.configService.get<string>('ADMIN_LOGIN');
-    const password = this.configService.get<string>('ADMIN_PASSWORD');
+  async createAdmin() {
+    const existingAdmin = await this.adminRepository.findOne({
+      where: { login: this.configService.get<string>('ADMIN_LOGIN') },
+    });
 
-    if (!login || !password) {
-      console.log('Admin credentials not provided in .env file');
-      return;
+    const adminLogin = this.configService.get<string>('ADMIN_LOGIN');
+    const adminPassword = this.configService.get<string>('ADMIN_PASSWORD');
+
+    if (!adminLogin) {
+      throw new Error('Заполните env: ADMIN_LOGIN');
+    }
+    if (!adminPassword) {
+      throw new Error('Заполните env: ADMIN_PASSWORD');
     }
 
-    const hashedPassword = await argon2.hash(password);
-
-    const existingAdmin = await this.adminService.findAdminByLogin(login);
     if (!existingAdmin) {
       const admin = new Admin();
-      admin.login = login;
-      admin.password = hashedPassword;
-      await this.adminService.adminsRepository.save(admin);
-      console.log('Admin seeded successfully');
+      admin.login = adminLogin;
+      admin.password = await argon2.hash(adminPassword); // Хешируем пароль
+      admin.accessToken = '';
+
+      await this.adminRepository.save(admin);
+      console.log('Admin created:', admin);
     } else {
-      console.log('Admin already exists');
+      console.log('Admin already exists:', existingAdmin);
     }
   }
 }

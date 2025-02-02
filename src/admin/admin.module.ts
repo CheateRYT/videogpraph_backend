@@ -1,19 +1,34 @@
-// src/admin/admin.module.ts
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AdminService } from './admin.service';
-import { AdminResolver } from './admin.resolver';
 import { Admin } from './admin.entity';
 import { AdminSeed } from './admin.seed';
-import { ConfigModule } from '@nestjs/config';
-import { AuthService } from 'src/auth/auth.service';
-import { JwtService } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AdminController } from './admin.controller';
+import { JwtModule } from '@nestjs/jwt';
+import { AdminService } from './admin.service';
+import { User } from 'src/users/entities/user.entity';
 
 @Module({
   imports: [
-    ConfigModule,
+    ConfigModule.forRoot(), // Убедитесь, что ConfigModule загружается
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '1h' },
+      }),
+      inject: [ConfigService],
+    }),
     TypeOrmModule.forFeature([Admin]),
+    TypeOrmModule.forFeature([User]),
   ],
-  providers: [AdminService, AdminResolver, AdminSeed, AuthService, JwtService],
+  providers: [AdminSeed, AdminService],
+  controllers: [AdminController],
 })
-export class AdminModule {}
+export class AdminModule implements OnModuleInit {
+  constructor(private readonly adminSeed: AdminSeed) {}
+
+  async onModuleInit() {
+    await this.adminSeed.createAdmin();
+  }
+}

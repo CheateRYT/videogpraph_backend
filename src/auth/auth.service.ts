@@ -1,63 +1,67 @@
-// src/auth/auth.service.ts
-import { Injectable } from '@nestjs/common';
-import { AdminService } from '../admin/admin.service';
-import * as argon2 from 'argon2';
+import { UserLoginDto } from './dto/user-login.dto';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
-import { Tokens } from './dto/token.dto';
+import * as jwt from 'jsonwebtoken';
+import * as argon2 from 'argon2'; // Импортируем argon2
+import { Admin } from 'src/admin/admin.entity';
+import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly adminService: AdminService,
-    private readonly jwtService: JwtService,
+    @InjectRepository(Admin)
+    private readonly adminRepository: Repository<Admin>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly configService: ConfigService,
   ) {}
 
-  async validateAdmin(login: string, password: string): Promise<any> {
-    const admin = await this.adminService.findAdminByLogin(login);
-    if (admin && (await argon2.verify(admin.password, password))) {
-      const { password, ...result } = admin;
-      return result;
+  async loginAdmin(dto: UserLoginDto): Promise<{ accessToken: string }> {
+    const { login, password } = dto;
+    const admin = await this.adminRepository.findOne({ where: { login } });
+    if (!admin) {
+      throw new NotFoundException('Администратор не найден');
     }
-    return null;
+
+    const isPasswordValid = await argon2.verify(admin.password, password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Неверный пароль');
+    }
+
+    const accessToken = this.generateAccessToken(admin);
+    admin.accessToken = accessToken;
+    await this.adminRepository.save(admin);
+    return { accessToken };
   }
 
-  async login(admin: any): Promise<Tokens> {
-    const payload = { login: admin.login, sub: admin.id };
-    const secret = this.configService.get<string>('JWT_SECRET');
-    if (!secret) {
-      throw new Error('JWT_SECRET is not defined');
+  async loginUser(dto: UserLoginDto): Promise<{ accessToken: string }> {
+    const { login, password } = dto;
+    const user = await this.userRepository.findOne({ where: { login } });
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
     }
-    return {
-      access_token: this.jwtService.sign(payload, { secret }),
-      refresh_token: this.generateRefreshToken(admin.id),
-    };
+
+    // Проверяем пароль в открытом виде (замените на хеширование, если необходимо)
+    if (user.password !== password) {
+      throw new UnauthorizedException('Неверный пароль');
+    }
+
+    const accessToken = this.generateAccessToken(user);
+    user.accessToken = accessToken;
+    await this.userRepository.save(user);
+    return { accessToken };
   }
 
-  generateRefreshToken(id: number): string {
-    const secret = this.configService.get<string>('JWT_REFRESH_SECRET');
-    if (!secret) {
-      throw new Error('JWT_REFRESH_SECRET is not defined');
-    }
-    return this.jwtService.sign({ id }, { secret, expiresIn: '7d' });
-  }
-
-  async refreshTokens(refreshToken: string): Promise<Tokens> {
-    try {
-      const secret = this.configService.get<string>('JWT_REFRESH_SECRET');
-      if (!secret) {
-        throw new Error('JWT_REFRESH_SECRET is not defined');
-      }
-      const payload = this.jwtService.verify(refreshToken, { secret });
-      const admin = await this.adminService.findAdminByLogin(payload.login);
-      if (!admin) {
-        throw new Error('Admin not found');
-      }
-      return this.login(admin);
-    } catch (error) {
-      console.error('Error refreshing tokens:', error);
-      throw new Error('Invalid refresh token');
-    }
+  private generateAccessToken(user: Admin | User): string {
+    const payload = { sub: user.id, login: user.login };
+    return jwt.sign(payload, this.configService.get<string>('JWT_SECRET'), {
+      expiresIn: '1h',
+    });
   }
 }

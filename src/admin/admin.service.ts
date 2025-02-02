@@ -1,27 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { UserLoginDto } from 'src/auth/dto/user-login.dto';
+import { User } from 'src/users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { Admin } from './admin.entity';
-import * as argon2 from 'argon2';
 
 @Injectable()
 export class AdminService {
   constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     @InjectRepository(Admin)
-    public adminsRepository: Repository<Admin>, // Сделаем репозиторий публичным
+    private readonly adminRepository: Repository<Admin>,
   ) {}
-
-  async findAdminByLogin(login: string): Promise<Admin | null> {
-    return this.adminsRepository.findOneBy({ login });
-  }
-
-  async updatePassword(id: number, newPassword: string): Promise<Admin> {
-    const admin = await this.adminsRepository.findOneBy({ id });
+  async findById(id: number): Promise<Admin> {
+    const admin = await this.adminRepository.findOne({ where: { id } });
     if (!admin) {
-      throw new Error('Admin not found');
+      throw new NotFoundException('Администратор не найден');
     }
-    const hashedPassword = await argon2.hash(newPassword);
-    admin.password = hashedPassword;
-    return this.adminsRepository.save(admin);
+    return admin;
+  }
+  async registerUser(dto: UserLoginDto): Promise<User> {
+    const { login, password } = dto;
+    const existingUser = await this.userRepository.findOne({
+      where: { login },
+    });
+    if (existingUser) {
+      throw new NotFoundException('Пользователь уже существует');
+    }
+
+    const user = new User();
+    user.login = login;
+    user.password = password; // Сохраняем пароль в открытом виде (не рекомендуется для продакшн)
+
+    return this.userRepository.save(user);
+  }
+  async getUsers(): Promise<User[]> {
+    return this.userRepository.find();
   }
 }

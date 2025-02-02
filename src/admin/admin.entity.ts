@@ -1,27 +1,16 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
-import { ObjectType, Field } from '@nestjs/graphql';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
-@ObjectType()
-@Entity()
+@Entity('admins')
 export class Admin {
-  @Field(() => Number)
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Field(() => String)
   @Column({ unique: true })
   login: string;
 
-  @Field(() => String)
   @Column()
   password: string;
 
-  @Field(() => String, { nullable: true })
-  @Column({ nullable: true })
+  @Column()
   accessToken: string;
-
-  @Field(() => String, { nullable: true })
-  @Column({ nullable: true })
-  refreshToken: string;
-
 }
