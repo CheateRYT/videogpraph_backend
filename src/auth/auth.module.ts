@@ -12,8 +12,7 @@ import { User } from 'src/users/entities/user.entity';
 @Module({
   controllers: [AuthController],
   imports: [
-    TypeOrmModule.forFeature([Admin]),
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([Admin, User]),
     ConfigModule.forRoot(), // Убедитесь, что ConfigModule импортирован
   ],
   providers: [AuthService, JwtStrategy],

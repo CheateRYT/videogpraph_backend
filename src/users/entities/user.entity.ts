@@ -21,5 +21,5 @@ export class User {
   @Column({ nullable: true })
   accessToken: string;
   @OneToMany(() => Video, (video) => video.user) // Указываем связь с видео
-  videos?: Video[];
+  videos: Video[];
 }
