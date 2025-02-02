@@ -7,6 +7,7 @@ import { AdminController } from './admin.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { AdminService } from './admin.service';
 import { User } from 'src/users/entities/user.entity';
+import { Video } from 'src/users/entities/video.entity';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { User } from 'src/users/entities/user.entity';
     }),
     TypeOrmModule.forFeature([Admin]),
     TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([Video]),
   ],
   providers: [AdminSeed, AdminService],
   controllers: [AdminController],
