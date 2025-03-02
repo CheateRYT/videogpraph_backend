@@ -43,8 +43,11 @@ export class AdminService {
     return this.userRepository.save(user);
   }
 
-  async addVideoToUser(createVideoDto: CreateVideoDto): Promise<Video> {
-    const user = await this.getUserById(createVideoDto.userId);
+  async addVideoToUser(
+    userId: number,
+    createVideoDto: CreateVideoDto,
+  ): Promise<Video> {
+    const user = await this.getUserById(userId);
 
     const video = this.videoRepository.create({
       link: createVideoDto.link,

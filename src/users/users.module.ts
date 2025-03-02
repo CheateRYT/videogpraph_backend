@@ -10,10 +10,10 @@ import { JwtModule } from '@nestjs/jwt';
   imports: [
     TypeOrmModule.forFeature([User, Video]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET, // Убедитесь, что у вас есть JWT_SECRET в ваших переменных окружения
-      signOptions: { expiresIn: '1h' }, // Опции для токена
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '1h' },
     }),
-  ], // Добавляем сущности
+  ],
   controllers: [UsersController],
   providers: [UsersService],
 })

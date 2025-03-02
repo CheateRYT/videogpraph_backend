@@ -22,14 +22,21 @@ export class AdminController {
     return this.adminService.registerUser(dto);
   }
 
-  @Post('add/video')
-  async addVideo(@Body() createVideoDto: CreateVideoDto) {
-    return this.adminService.addVideoToUser(createVideoDto);
+  @Post('add/video/:userId')
+  async addVideo(
+    @Param('userId') userId: number,
+    @Body() createVideoDto: CreateVideoDto,
+  ) {
+    return this.adminService.addVideoToUser(userId, createVideoDto);
   }
 
   @Get('users')
   async getUsers() {
     return this.adminService.getUsers();
+  }
+  @Get('users/:id')
+  async getUserById(@Param('id') id: number) {
+    return this.adminService.findById(id);
   }
   @Delete('users/:id') // Удаление пользователя по ID
   async deleteUser(@Param('id') id: number) {

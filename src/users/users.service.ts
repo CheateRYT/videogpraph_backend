@@ -23,4 +23,16 @@ export class UsersService {
     }
     return user.videos; // Возвращаем все видео пользователя
   }
+  async getUserProfile(userId: number): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['videos'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    return user;
+  }
 }

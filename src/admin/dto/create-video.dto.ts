@@ -4,7 +4,4 @@ export class CreateVideoDto {
   @IsString()
   @IsNotEmpty()
   link: string;
-
-  @IsNotEmpty()
-  userId: number; // ID пользователя, которому будет добавлено видео
 }
