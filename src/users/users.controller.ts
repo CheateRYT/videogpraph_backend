@@ -1,3 +1,4 @@
+// src/users/users.controller.ts
 import { Controller, Get, UseGuards, Request } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Video } from './entities/video.entity';
@@ -8,16 +9,21 @@ import { User } from './entities/user.entity';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @UseGuards(JwtAuthGuard) // Используем Guard для проверки JWT
+  @UseGuards(JwtAuthGuard)
   @Get('videos')
   async getUserVideos(@Request() req): Promise<Video[]> {
-    const userId = req.user.userId; // Извлекаем ID пользователя из запроса
+    // Make sure we're getting the userId from the right place
+    const userId = req.user.userId;
+    console.log('Getting videos for user ID:', userId); // Add logging for debugging
     return this.usersService.getUserVideos(userId);
   }
+
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   async getUserProfile(@Request() req): Promise<User> {
+    // Make sure we're getting the userId from the right place
     const userId = req.user.userId;
+    console.log('Getting profile for user ID:', userId); // Add logging for debugging
     return this.usersService.getUserProfile(userId);
   }
 }

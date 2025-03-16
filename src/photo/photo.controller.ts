@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PhotoService } from './photo.service';
-import { AdminGuard } from 'src/admin.guard';
+import { AdminGuard } from '../admin.guard';
 import { CreatePhotoDto, UpdatePhotoDto } from './dto/photo.dto';
 
 @Controller('photo')
@@ -22,6 +22,10 @@ export class PhotoController {
     return this.photoService.create(createPhotoDto);
   }
 
+  @Get('page/:pageName')
+  async findByPageName(@Param('pageName') pageName: string) {
+    return this.photoService.findByPageName(pageName);
+  }
   @Get()
   findAll() {
     return this.photoService.findAll();

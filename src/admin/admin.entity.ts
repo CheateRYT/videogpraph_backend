@@ -2,15 +2,15 @@ import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity('admins')
 export class Admin {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn() //Уникальный айди админа
   id: number;
 
-  @Column({ unique: true })
+  @Column({ unique: true }) //Уникальный логин админа
   login: string;
 
-  @Column()
+  @Column() // пароль
   password: string;
 
-  @Column()
+  @Column() //сессионный ключ
   accessToken: string;
 }

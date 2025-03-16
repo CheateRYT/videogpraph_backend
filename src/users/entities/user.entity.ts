@@ -1,25 +1,22 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  OneToMany,
-  Admin,
-} from 'typeorm';
-import { Video } from './video.entity';
-
-@Entity('users')
+  Entity, // Импортируем декоратор Entity из TypeORM для определения сущности
+  PrimaryGeneratedColumn, // Импортируем декоратор для автоматической генерации первичного ключа
+  Column, // Импортируем декоратор для определения столбцов в сущности
+  OneToMany, // Импортируем декоратор для определения связи "один ко многим"
+  Admin, // Импортируем декоратор Admin (если он используется, возможно, не нужен)
+} from 'typeorm'; // Импортируем все декораторы из библиотеки TypeORM
+import { Video } from './video.entity'; // Импортируем сущность Video для указания связи
+@Entity('users') // Определяем сущность User и указываем имя таблицы в базе данных
 export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column({ unique: true })
-  login: string;
-
-  @Column()
-  password: string;
-
-  @Column({ nullable: true })
-  accessToken: string;
-  @OneToMany(() => Video, (video) => video.user) // Указываем связь с видео
-  videos: Video[];
+  @PrimaryGeneratedColumn() // Указываем, что этот столбец является первичным ключом с автоматической генерацией
+  id: number; // Поле для хранения идентификатора пользователя
+  @Column({ unique: true }) // Указываем, что это поле должно быть уникальным в таблице
+  login: string; // Поле для хранения логина пользователя
+  @Column() // Указываем, что это поле является обычным столбцом
+  password: string; // Поле для хранения пароля пользователя
+  // Сессионный ключ
+  @Column({ nullable: true }) // Указываем, что это поле может быть пустым (nullable)
+  accessToken: string; // Поле для хранения токена доступа (сессионного ключа)
+  @OneToMany(() => Video, (video) => video.user) // Указываем связь "один ко многим" с сущностью Video
+  videos: Video[]; // Поле для хранения массива видео, связанных с пользователем
 }

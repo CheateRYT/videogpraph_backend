@@ -1,16 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
-
-@Entity('photos')
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm'; // Импортируем необходимые декораторы из библиотеки TypeORM
+@Entity('photos') // Определяем сущность Photo и указываем имя таблицы в базе данных, которая будет соответствовать этой сущности
 export class Photo {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column()
-  pageName: string;
-
-  @Column()
-  path: string;
-
-  @Column()
-  order: number;
+  @PrimaryGeneratedColumn() // Указываем, что этот столбец является первичным ключом с автоматической генерацией
+  id: number; // Поле для хранения идентификатора фото
+  @Column() // Указываем, что это поле является обычным столбцом в таблице
+  pageName: string; // Поле для хранения имени страницы, на которой находится фото
+  @Column() // Указываем, что это поле является обычным столбцом в таблице
+  path: string; // Поле для хранения пути к фото
+  @Column() // Указываем, что это поле является обычным столбцом в таблице
+  order: number; // Поле для хранения порядка отображения фото (например, для сортировки)
 }
