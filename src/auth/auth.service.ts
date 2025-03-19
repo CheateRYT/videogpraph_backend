@@ -60,7 +60,14 @@ export class AuthService {
       sub: user.id, // Используем 'sub' для идентификатора пользователя
       login: user.login, // Добавляем логин пользователя в полезную нагрузку
     };
-    return jwt.sign(payload, this.configService.get<string>('JWT_SECRET'), {
+    const jwtSecret = this.configService.get<string>('JWT_SECRET'); // Получаем секрет JWT из конфигурации
+    if (!jwtSecret) {
+      // Проверяем, установлен ли секрет
+      throw new UnauthorizedException( // Если секрет не установлен, выбрасываем исключение
+        'JWT_SECRET is not defined in the environment variables', // Сообщение об ошибке
+      );
+    }
+    return jwt.sign(payload, jwtSecret, {
       // Генерируем токен, используя секретный ключ из конфигурации
       expiresIn: '1h', // Устанавливаем срок действия токена на 1 час
     });
