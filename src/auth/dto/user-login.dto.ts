@@ -8,4 +8,8 @@ export class UserLoginDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+
+  @IsString()
+  @IsNotEmpty()
+  personalData:string
 }

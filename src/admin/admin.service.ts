@@ -34,7 +34,8 @@ export class AdminService {
     }
     const user = this.userRepository.create({
       login: dto.login, // Создаем нового пользователя с логином
-      password: dto.password, // Сохраняем пароль в открытом виде (не рекомендуется для продакшн)
+      password: dto.password,
+      personalData: dto.personalData// Сохраняем пароль в открытом виде (не рекомендуется для продакшн)
     });
     return this.userRepository.save(user); // Сохраняем пользователя в базе данных и возвращаем его
   }

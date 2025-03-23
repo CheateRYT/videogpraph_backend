@@ -1,50 +1,70 @@
 import {
   Controller,
-  Get,
   Post,
-  Body,
-  Patch,
+  UseInterceptors,
+  UploadedFile,
+  Get,
   Param,
+  ParseIntPipe,
+  Put,
   Delete,
+  Body,
   UseGuards,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { PhotoService } from './photo.service';
-import { AdminGuard } from '../admin.guard';
-import { CreatePhotoDto, UpdatePhotoDto } from './dto/photo.dto';
-
-@Controller('photo')
+import { Photo } from './entity/photo.entity';
+import { AdminGuard } from 'src/admin.guard';
+@Controller('photos')
 export class PhotoController {
   constructor(private readonly photoService: PhotoService) {}
+  // POST /photos/upload – загрузка фото (drag&drop через REST)
+  // В теле запроса передается поле isAvatar (например, "true" или "false").
 
-  @Post()
+  @Post('upload')
   @UseGuards(AdminGuard)
-  create(@Body() createPhotoDto: CreatePhotoDto) {
-    return this.photoService.create(createPhotoDto);
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadPhoto(
+    @UploadedFile() file: any,
+    @Body('isAvatar') isAvatar: string,
+  ): Promise<Photo> {
+    // Приводим строковое значение к boolean
+    const isAvatarFlag = isAvatar === 'true';
+    return await this.photoService.uploadPhoto(file, isAvatarFlag);
   }
-
-  @Get('page/:pageName')
-  async findByPageName(@Param('pageName') pageName: string) {
-    return this.photoService.findByPageName(pageName);
-  }
-  @Get()
-  findAll() {
-    return this.photoService.findAll();
-  }
-
+  // GET /photos/:id – получение URL фото по id
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.photoService.findOne(+id);
+  async getPhotoUrl(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ url: string }> {
+    const url = await this.photoService.getPhotoUrl(id);
+    return { url };
+  }
+  // GET /photos – получение всех фото (пример)
+  @Get()
+  async getAllPhoto(): Promise<Photo[]> {
+    return await this.photoService.getAll();
   }
 
-  @Patch(':id')
+  // PUT /photos/:id – обновление фото (замена старого файла) с возможностью изменить флаг isAvatar
   @UseGuards(AdminGuard)
-  update(@Param('id') id: string, @Body() updatePhotoDto: UpdatePhotoDto) {
-    return this.photoService.update(+id, updatePhotoDto);
+  @Put(':id')
+  @UseInterceptors(FileInterceptor('file'))
+  async updatePhoto(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: any,
+    @Body('isAvatar') isAvatar: string,
+  ): Promise<Photo> {
+    const isAvatarFlag = isAvatar === 'true';
+    return await this.photoService.updatePhoto(id, file, isAvatarFlag);
   }
-
+  // DELETE /photos/:id – удаление фото по id
+  @UseGuards(AdminGuard)
   @Delete(':id')
-  @UseGuards(AdminGuard)
-  remove(@Param('id') id: string) {
-    return this.photoService.remove(+id);
+  async deletePhoto(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ success: boolean }> {
+    await this.photoService.deletePhoto(id);
+    return { success: true };
   }
 }

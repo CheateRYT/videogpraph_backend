@@ -1,87 +1,131 @@
-import { Injectable, NotFoundException } from '@nestjs/common'; // Импортируем необходимые декораторы и исключения из NestJS
-import { InjectRepository } from '@nestjs/typeorm'; // Импортируем декоратор для внедрения репозиториев из TypeORM
-import { Repository } from 'typeorm'; // Импортируем класс Repository из TypeORM для работы с сущностями
-import { Photo } from './entity/photo.entity'; // Импортируем сущность Photo
-import { CreatePhotoDto, UpdatePhotoDto } from './dto/photo.dto'; // Импортируем DTO для создания и обновления фото
-@Injectable() // Декоратор, который делает класс доступным для внедрения зависимостей
+import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { createWriteStream, unlink, existsSync, mkdirSync } from 'fs';
+import { extname, join } from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import { Photo } from './entity/photo.entity';
+import { ConfigService } from '@nestjs/config';
+@Injectable()
 export class PhotoService {
+  // Директория для хранения фотографий – папка public в корне проекта
+  private uploadDir = join(__dirname, '../../public');
+
   constructor(
-    @InjectRepository(Photo) // Внедряем репозиторий для работы с сущностью Photo
-    private readonly photoRepository: Repository<Photo>, // Объявляем переменную для репозитория Photo
-  ) {}
-  // Метод для создания нового фото
-  async create(createPhotoDto: CreatePhotoDto): Promise<Photo> {
-    // Проверяем, установлен ли порядок для нового фото
-    if (createPhotoDto.order === undefined) {
-      // Находим фото с наибольшим порядком для данной страницы
-      const highestOrderPhoto = await this.photoRepository.findOne({
-        where: { pageName: createPhotoDto.pageName }, // Условие поиска по имени страницы
-        order: { order: 'DESC' }, // Сортируем по порядку в порядке убывания
+    @InjectRepository(Photo)
+    private readonly photoRepository: Repository<Photo>,
+    private readonly configService: ConfigService,
+  ) {
+    // Проверяем существование директории и создаём её, если отсутствует
+    if (!existsSync(this.uploadDir)) {
+      try {
+        mkdirSync(this.uploadDir, { recursive: true });
+      } catch (error) {
+        throw new InternalServerErrorException(
+          'Не удалось создать директорию для загрузки фотографий',
+        );
+      }
+    }
+  }
+  // Загрузка фото через REST API. Параметр isAvatar определяет, является ли фото аватаром.
+  async uploadPhoto(file: any, isAvatar: boolean): Promise<Photo> {
+    // Извлекаем расширение файла (например, .png, .jpeg, .webp)
+    const fileExtension = extname(file.originalname);
+    const uniqueFilename = `${uuidv4()}${fileExtension}`;
+    const filePath = join(this.uploadDir, uniqueFilename);
+    // Записываем файл
+    await new Promise<void>((resolve, reject) => {
+      const writeStream = createWriteStream(filePath);
+      writeStream.on('finish', resolve);
+      writeStream.on('error', (err) => {
+        reject(
+          new InternalServerErrorException(
+            'Ошибка при сохранении файла: ' + err.message,
+          ),
+        );
       });
-      // Устанавливаем порядок для нового фото
-      createPhotoDto.order = highestOrderPhoto
-        ? highestOrderPhoto.order + 1 // Если фото найдено, увеличиваем порядок на 1
-        : 1; // Если фото не найдено, устанавливаем порядок равным 1
-    }
-    const photo = this.photoRepository.create(createPhotoDto); // Создаем новое фото на основе DTO
-    return this.photoRepository.save(photo); // Сохраняем фото в базе данных и возвращаем его
-  }
-  // Метод для получения всех фото
-  async findAll(): Promise<Photo[]> {
-    return this.photoRepository.find({
-      // Находим все фото
-      order: {
-        order: 'ASC', // Сортируем по порядку в порядке возрастания
-      },
+      writeStream.write(file.buffer);
+      writeStream.end();
     });
-  }
-  // Метод для получения фото по имени страницы
-  async findByPageName(pageName: string): Promise<Photo[]> {
-    const photos = await this.photoRepository.find({
-      // Находим фото по имени страницы
-      where: { pageName }, // Условие поиска по имени страницы
-      order: {
-        order: 'ASC', // Сортируем по порядку в порядке возрастания
-      },
+    // Создаём запись в базе данных с переданным флагом isAvatar
+    const photo = this.photoRepository.create({
+      fileName: uniqueFilename,
+      order: 0,
+      isAvatar,
     });
-    if (!photos || photos.length === 0) {
-      return []; // Возвращаем пустой массив, если фото не найдены
-    }
-    return photos; // Возвращаем найденные фото
+    return await this.photoRepository.save(photo);
   }
-  // Метод для получения одного фото по его идентификатору
-  async findOne(id: number): Promise<Photo> {
-    const photo = await this.photoRepository.findOne({ where: { id } }); // Находим фото по идентификатору
+  // Получение URL фото по его id
+  async getPhotoUrl(id: number): Promise<string> {
+    const photo = await this.photoRepository.findOne({ where: { id } });
     if (!photo) {
-      throw new NotFoundException(`Photo with ID ${id} not found`); // Если фото не найдено, выбрасываем исключение
+      throw new NotFoundException('Фото не найдено');
     }
-    return photo; // Возвращаем найденное фото
+    return `http://localhost:${this.configService.get<number>('PORT') || 3000}/${photo.fileName}`;
   }
-  // Метод для обновления информации о фото
-  async update(id: number, updatePhotoDto: UpdatePhotoDto): Promise<Photo> {
-    const photo = await this.findOne(id); // Находим фото по идентификатору
-    // Проверяем, изменилось ли имя страницы и установлен ли порядок
-    if (
-      updatePhotoDto.pageName &&
-      updatePhotoDto.pageName !== photo.pageName &&
-      updatePhotoDto.order === undefined
-    ) {
-      // Находим фото с наибольшим порядком для новой страницы
-      const highestOrderPhoto = await this.photoRepository.findOne({
-        where: { pageName: updatePhotoDto.pageName }, // Условие поиска по имени новой страницы
-        order: { order: 'DESC' }, // Сортируем по порядку в порядке убывания
+  // Обновление фото: удаление старого файла и загрузка нового, а также обновление флага isAvatar
+  async updatePhoto(id: number, file: any, isAvatar: boolean): Promise<Photo> {
+    const photo = await this.photoRepository.findOne({ where: { id } });
+    if (!photo) {
+      throw new NotFoundException('Фото не найдено');
+    }
+
+    // Удаляем старый файл, если он существует
+    const oldPath = join(this.uploadDir, photo.fileName);
+    if (existsSync(oldPath)) {
+      await new Promise<void>((resolve) => {
+        unlink(oldPath, () => resolve());
       });
-      // Устанавливаем порядок для обновляемого фото
-      updatePhotoDto.order = highestOrderPhoto
-        ? highestOrderPhoto.order + 1 // Если фото найдено, увеличиваем порядок на 1
-        : 1; // Если фото не найдено, устанавливаем порядок равным 1
     }
-    Object.assign(photo, updatePhotoDto); // Копируем обновленные данные в найденное фото
-    return this.photoRepository.save(photo); // Сохраняем обновленное фото и возвращаем его
+
+    // Извлекаем расширение файла и формируем уникальное имя
+    const fileExtension = extname(file.originalname);
+    const uniqueFilename = `${uuidv4()}${fileExtension}`;
+    const newPath = join(this.uploadDir, uniqueFilename);
+
+    // Записываем новый файл
+    await new Promise<void>((resolve, reject) => {
+      const writeStream = createWriteStream(newPath);
+      writeStream.on('finish', resolve);
+      writeStream.on('error', (err) => {
+        reject(
+          new InternalServerErrorException(
+            'Ошибка при сохранении файла: ' + err.message,
+          ),
+        );
+      });
+      writeStream.write(file.buffer);
+      writeStream.end();
+    });
+
+    photo.fileName = uniqueFilename;
+    photo.isAvatar = isAvatar;
+    return await this.photoRepository.save(photo);
   }
-  // Метод для удаления фото
-  async remove(id: number): Promise<void> {
-    const photo = await this.findOne(id); // Находим фото по идентификатору
-    await this.photoRepository.remove(photo); // Удаляем фото из базы данных
+  // Удаление фото по id
+  async deletePhoto(id: number): Promise<boolean> {
+    const photo = await this.photoRepository.findOne({ where: { id } });
+    if (!photo) {
+      throw new NotFoundException('Фото не найдено');
+    }
+    const filePath = join(this.uploadDir, photo.fileName);
+    if (existsSync(filePath)) {
+      await new Promise<void>((resolve) => {
+        unlink(filePath, () => resolve());
+      });
+    }
+    await this.photoRepository.remove(photo);
+    return true;
+  }
+  // Получение всех фото (например, для галереи)
+  async getAll(): Promise<Photo[]> {
+    const photos = await this.photoRepository.find({
+      where: { isAvatar: false },
+    });
+    return photos;
+  }
+  // Метод для поиска фото по fileName
+  async findByFileName(fileName: string): Promise<Photo | null> {
+    return await this.photoRepository.findOne({ where: { fileName } });
   }
 }

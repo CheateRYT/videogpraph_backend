@@ -6,6 +6,8 @@ import { AdminModule } from './admin/admin.module';
 import { UsersModule } from './users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { PhotoModule } from './photo/photo.module';
+import { ReviewModule } from './review/review.module';
+import { AvatarModule } from './avatar/avatar.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { PhotoModule } from './photo/photo.module';
     }),
     AuthModule,
     AdminModule,
+    ReviewModule,
+    AvatarModule,
     UsersModule,
     PhotoModule,
   ],
